@@ -29,12 +29,13 @@ function analyse_md(folder, diff_elem, material)
     rdf_max_dist = 10; %Maximal distance of the RDF in Angstrom 
 
     % Movie showing the jumps:  
-    movie = true; % Make a movie showing the jumps (or not) 
+    movie = false; % Make a movie showing the jumps (or not) 
     nr_steps_frame = 5; % How many time steps per frame in the movie, increase to get smaller and quicker movies
-    start_end = [5000; 6000]; % The time-steps for which to make a movie ([start at step; end at step])
+    start_end = [5000; 7500]; % The time-steps for which to make a movie ([start at step; end at step])
        
  %% Standard file names:
     outcar_file = [folder, '/OUTCAR'];
+    vasprun_file = [folder, '/vasprun.xml']; %Backup for if the atomic positions are not in the OUTCAR
     sim_data_file = [folder, '/simulation_data.mat'];
     sites_file = [folder, '/sites.mat'];
     rdf_file = [folder, '/rdfs.mat'];
@@ -54,7 +55,7 @@ function analyse_md(folder, diff_elem, material)
         if exist(outcar_file, 'file')
             % Read in the simulation data from outcar_file
             fprintf('Reading simulation data from %s, this can take a while.... \n', outcar_file)            
-            sim_data = read_vasp(outcar_file, equil_time, diff_elem, sim_data_file, diffusion_dimensions, z_ion);
+            sim_data = read_vasp(outcar_file, vasprun_file, equil_time, diff_elem, sim_data_file, diffusion_dimensions, z_ion);
         else
             fprintf('ERROR! %s not found! \n', outcar_file)   
             return
@@ -62,6 +63,16 @@ function analyse_md(folder, diff_elem, material)
     else % sim_data exists already:
         disp('Found simulation data file in given folder')
         load(sim_data_file) 
+        %TEMPORARY!
+        sim_data.diffusion_dim = 3;
+        if isfield(sim_data, 'vibration_std')
+            sim_data.vibration_amp = sim_data.vibration_std;
+        end
+        if isfield(sim_data, 'start_diff_atom')
+            sim_data.start_diff_elem = sim_data.start_diff_atom;
+            sim_data.end_diff_elem = sim_data.end_diff_atom;
+        end
+        save(sim_data_file, 'sim_data')
     end    
     
 %% Find sites and transitions  
@@ -76,7 +87,8 @@ function analyse_md(folder, diff_elem, material)
     % Save the material
         sites.material = material;
     % Determine the fractional occupancies of sites:    
-        [sites.stable_names, sites.sites_occup, sites.atom_locations] = calc_site_occups(sites);       
+        [sites.stable_names, sites.sites_occup, sites.atom_locations, ... 
+            sites.occup_parts, sites.atom_loc_parts] = calc_site_occups(sites);       
     % Calculate jump rates and activation energy for all the differently named 
     % transitions between the given sites:  
         [sites.jump_names, sites.nr_jumps, sites.rates, sites.e_act] = calc_rates(sites, sim_data);
@@ -93,7 +105,7 @@ function analyse_md(folder, diff_elem, material)
     else
         load(sites_file)
         fprintf('Found sites file: %s .\n', sites_file)
-        if ~strcmp(sites.material, material);
+        if ~strcmp(sites.material, material)
             fprintf('ERROR! The material in sites.mat (%s) differs from the given one (%s)! \n', sites.material, material)
             fprintf('If this is not a mistake rename or remove sites.mat and try again. \n')
             return 
@@ -116,7 +128,10 @@ function analyse_md(folder, diff_elem, material)
             plot_collective(sites);
         end
     end
-
+    % Binnen show_pics doen uiteindelijk...
+    % PHONONS IS NUTTELOOS, SNELHEDEN WEL HOUDEN...
+    %phonons_speeds(sim_data, sites)
+    
     %% Radial distribution functions
     % Check if rdfs == true, and if the file does not exist yet:
     if rdfs && ~exist(rdf_file, 'file') 
@@ -132,13 +147,13 @@ function analyse_md(folder, diff_elem, material)
     end
 
     %% Movie of the transitions: 
-    if movie && sites.nr_jumps > 0 %0 jumps will make a very boring movie
+    if movie && sum(sites.nr_jumps) > 0 %0 jumps will make a very boring movie
         if ~exist(movie_file, 'file')
             make_movie(sites, sim_data, start_end, movie_file, nr_steps_frame); 
         elseif exist(movie_file, 'file')
             fprintf('Movie file %s found, rename the movie file if you want to make another movie. \n', movie_file)
         end
-    elseif movie && sites.nr_jumps == 0 %0 jumps will make a very boring movie
+    elseif movie && sum(sites.nr_jumps) == 0 %0 jumps will make a very boring movie
         fprintf('Not making a movie because there are no jumps occuring in the MD simulation. \n')
     end
     

@@ -68,7 +68,7 @@ function rdf = calc_rdfs(sites, sim_data, res, max_dist)
                 end
             end 
         end
-        fprintf('*') % Show that things are happening
+        fprintf('*') % Shows that one atom is finished
     end
     fprintf(' \n')
     %fprintf('Finished calculating RDFs after %f minutes. \n', toc/60)

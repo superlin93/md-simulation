@@ -18,7 +18,7 @@ function [names, pos, supercell] = known_materials(material)
        fprintf('Assuming a %d x %d x %d supercell \n', supercell(1), supercell(2), supercell(3)) 
        [names, pos] = na3ps4(supercell);
        
-    elseif strcmp(material, 'LiSnPS')
+    elseif strcmp(material, 'lisnps')
        supercell = [1 1 1]; 
        fprintf('Material is: %s \n', material)         
        fprintf('Assuming a %d x %d x %d supercell \n', supercell(1), supercell(2), supercell(3))         
@@ -30,15 +30,40 @@ function [names, pos, supercell] = known_materials(material)
        fprintf('Assuming a %d x %d x %d supercell \n', supercell(1), supercell(2), supercell(3))                 
        [names, pos] = li3ps4_beta(supercell);
        
-    elseif strcmp(material, 'MnO2_lambda')
+    elseif strcmp(material, 'mno2_lambda')
        supercell = [1 1 1]; 
        fprintf('Material is: %s \n', material)         
        fprintf('Assuming a %d x %d x %d supercell \n', supercell(1), supercell(2), supercell(3))    
-       [names, pos] = mno2_lambda(supercell);  
+       [names, pos] = mno2_lambda(supercell);             
+       
+    elseif strcmp(material, 'lagp')
+       supercell = [1 2 2]; 
+       fprintf('Material is: %s \n', material)         
+       fprintf('Assuming a %d x %d x %d supercell \n', supercell(1), supercell(2), supercell(3))    
+       [names, pos] = lagp(supercell);  
        
     else
-       disp('Material not known! Add it to known_materials.m') 
+       disp('ERROR! Material not recognised, add it to known_materials.m') 
+       disp('ERROR! Also check if you have given the material name in all lower case correctly!')
     end
+end
+
+%% LAGP
+function [names, pos] = lagp(supercell)
+% Space group no. 167 (R-3c) h-axes
+%The symmetries applicable to each site:
+	sym = [0 0 0; 2/3 1/3 1/3; 1/3 2/3 2/3];
+% 36f-sites
+    x = 0.025;
+    y = 0.025;
+    z = 0.0;
+    pos_sym = [ x,y,z;	-y,x-y,z;	-x+y,-x,z;	y,x,-z+1/2; ...
+        x-y,-y,-z+1/2;	-x,-x+y,-z+1/2;	-x,-y,-z;	y,-x+y,-z; ...
+    x-y,x,-z;	-y,-x,z+1/2;	-x+y,y,z+1/2;	x,x-y,z+1/2 ];
+    names_sym = {'36f', '36f', '36f','36f', '36f', '36f','36f', '36f', '36f','36f', '36f', '36f'};
+
+    %Construct all sites:
+    [names, pos] = construct(sym', pos_sym', names_sym, supercell);
 end
 
 %% Na3PS4

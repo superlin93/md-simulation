@@ -104,9 +104,9 @@ function plots_from_displacement(sim_data, sites, resolution)
     iso = [0.25 0.10 0.02]; % isosurface values (with respect to the maximum value)
     alpha = [0.5 0.3 0.1]; % the transparancy;
     % For some reason the x and y axis are permuted by isosurface, fix this by permuting
-    % them yourself again:
+    % them again:
     box_smooth = permute(box_smooth, [2, 1, 3]);
-    for i = 1:3 
+    for i = 1:size(iso,2)
         isoval = iso(i)*maxval;
         surf=isosurface(box_smooth,isoval); 
         p1 = patch(surf);
@@ -141,11 +141,11 @@ function plots_from_displacement(sim_data, sites, resolution)
 %         if i < sim_data.start_diff_elem || i > sim_data.end_diff_elem
 %              % Plot atom positions:
 %             point_size = 250;
-%             if strcmp('S', sim_data.atom_element(i))
+%             if strcmp('S', sim_data.atom_element(i)) %Sulfur
 %                 color = 'green';
-%             elseif strcmp('O', sim_data.atom_element(i))
+%             elseif strcmp('O', sim_data.atom_element(i)) %Oxygen
 %                 color = 'magenta';
-%             elseif strcmp('P', sim_data.atom_element(i))
+%             elseif strcmp('P', sim_data.atom_element(i)) %Phosphor
 %                 color = 'black';
 %             else
 %                 color = 'red';

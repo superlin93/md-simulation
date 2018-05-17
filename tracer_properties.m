@@ -15,16 +15,14 @@ function [tracer_diff, tracer_conduc, particle_density, mol_per_liter] = ...
     % Concentration of diffusing atom in mol/L (1000 converts from m^3 to liters)
     mol_per_liter = particle_density/(1000*sim_data.avogadro);
     
-    % Mean Square Displacement:        
-    total_msd = 0.0;
-    for i = sim_data.start_diff_elem:sim_data.end_diff_elem
-        total_msd = total_msd + sim_data.displacement(i, sim_data.nr_steps)^2;   
-    end
-    msd = total_msd/sim_data.nr_diffusing; % In Angstrom^2
+    % Mean Squared Displacement:        
+    displacement = sim_data.displacement(sim_data.start_diff_elem:sim_data.end_diff_elem, sim_data.nr_steps);
+    sqrd_disp = displacement.^2;
+    msd = mean(sqrd_disp); % In Angstrom^2
 
     % Diffusivity = MSD/(2*dimensions*time)
     tracer_diff = (msd * ang2m^2)/(2*dimensions*sim_data.total_time); % In m^2/sec
-    
+
     % Conductivity = elementary_charge^2 * charge_ion^2 * diffusivity * particle_density / (k_B * T)
     tracer_conduc = ((sim_data.e_charge^2) * (z_ion^2) * tracer_diff * particle_density)/ ...
         (sim_data.k_boltzmann*sim_data.temperature); % In Siemens/meter

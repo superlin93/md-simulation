@@ -1,4 +1,4 @@
-function sim_data = read_vasp(outcar_file, equil_time, diff_elem, output_file, diff_dim, z_ion)   
+function sim_data = read_vasp(outcar_file, vasprun_file, equil_time, diff_elem, output_file, diff_dim, z_ion)   
 % Reads in an OUTCAR-file from VASP
     %% Define constants
     sim_data.e_charge = 1.60217657e-19; %Electron charge
@@ -13,7 +13,7 @@ function sim_data = read_vasp(outcar_file, equil_time, diff_elem, output_file, d
     sim_data.diff_elem = diff_elem;
     sim_data.equilibration_time = equil_time;
     %% Read OUTCAR:
-    sim_data = read_outcar(outcar_file, sim_data);
+    sim_data = read_outcar(outcar_file, vasprun_file, sim_data);
     
     %% Calculate Attempt frequency, and standard deviation of vibration distance
     [sim_data.attempt_freq, sim_data.vibration_amp, sim_data.std_attempt_freq] = ...
@@ -27,7 +27,7 @@ function sim_data = read_vasp(outcar_file, equil_time, diff_elem, output_file, d
     fprintf('Finished reading in the OUTCAR file after %f minutes \n', toc/60 ) 
 end
 
-function sim_data = read_outcar(outcar_file, sim_data)
+function sim_data = read_outcar(outcar_file, vasprun_file, sim_data)
     time = 0;
     tic
     pos_line = ' POSITION                                       TOTAL-FORCE (eV/Angst)'; %KEEP THE SPACES!
@@ -82,16 +82,8 @@ function sim_data = read_outcar(outcar_file, sim_data)
             end
         end
         line = fgetl(file);
-    end
-    %% Check and define simulation dependent things:
-    sim_data.equilibration_steps = sim_data.equilibration_time/sim_data.time_step;
-    % Number of steps to be used for the analysis:
-    sim_data.nr_steps = round(total_steps - sim_data.equilibration_steps); 
-    fprintf('Throwing away the first %4.0f steps because of the chosen equilibration time. \n', sim_data.equilibration_steps)
-
-    % Define cartesian positions array
-    sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps); 
-
+    end  
+    
     % Diffusing element specific:
     counter = 1;
     sim_data.atom_element = cell(sim_data.nr_atoms,1);
@@ -115,7 +107,19 @@ function sim_data = read_outcar(outcar_file, sim_data)
         error('ERROR! Given diffusing element not found in inputfile! Check your input')
     end
     
+    %% Check and define simulation dependent things:
+    sim_data.equilibration_steps = sim_data.equilibration_time/sim_data.time_step;
+    % Number of steps to be used for the analysis:
+    if isnan(total_steps)
+        disp('WARNING! Total number of steps is undefined in OUTCAR, assuming 1 million steps!') %After values of 1 million VASP writes *******
+        disp('WARNING! This will be adjusted after the atomic positions have been read in.')
+        total_steps = 1000000; 
+    end
+    sim_data.nr_steps = round(total_steps - sim_data.equilibration_steps); 
+    fprintf('Throwing away the first %4.0f steps because of the chosen equilibration time. \n', sim_data.equilibration_steps)
+    
 %% Now read positions of all atoms during the simulation:
+    sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps); % Define cartesian positions array
     nr_atoms = sim_data.nr_atoms;
     step = 0;
     skip_steps = sim_data.equilibration_steps;
@@ -134,14 +138,27 @@ function sim_data = read_outcar(outcar_file, sim_data)
                 end
             end
             if mod(step+1,2500) == 0 % Show that reading in is still happening:
-                fprintf('Reading timestep %d after %f minutes. \n', step+1, toc/60)
+                fprintf('Reading timestep %d of %d after %f minutes. \n', ... 
+                    step+1, sim_data.nr_steps, toc/60)
             end
         end %positions
         line = fgetl(file); %the next line         
     end
     fclose(file);
 
-%% Reading OUTCAR file done:
+    if step == 0 % No positions found in OUTCAR, so read them from vasprun.xml
+        disp('WARNING! The OUTCAR-file does not contain the atomic positions from the MD simulation!')
+        if ~exist(vasprun_file, 'file')
+            disp('EXIT! No atomic positions during the MD simulation found in the OUTCAR-file')
+            disp('EXIT! Put vasprun.xml in the folder to read the atomic positions from that file')
+            disp('EXIT! When vasprun.xml is in the folder run analyse_md again')
+            return %Completely quit analyse_md?
+        else % USE vasprun.xml to read in coordinates
+            [sim_data, step] = read_vasprunxml(vasprun_file, sim_data);
+        end
+    end
+    
+%% Reading positions done:
     % If the simulation was not completely finished:
     if step ~= sim_data.nr_steps
         sim_data.nr_steps = step;
@@ -154,6 +171,49 @@ function sim_data = read_outcar(outcar_file, sim_data)
     
     % Determine fractional positions and displacement:
     sim_data = frac_and_disp(sim_data);  
+    
+end
+
+function [sim_data, step] = read_vasprunxml(vasprun_file, sim_data)
+% Reads the atomic positions during the MD simulation from vasprun.xml 
+% only when the atomic coordinates are missing in OUTCAR! (for Shiv)
+    disp('WARNING! The atomic positions during the MD simulation are read from vasprun.xml')
+    %Start:
+    file = fopen(vasprun_file);
+    pos_line = '   <varray name="positions" >';
+    nr_atoms = sim_data.nr_atoms;
+    step = 0;
+    lattice = sim_data.lattice;
+    skip_steps = sim_data.equilibration_steps;
+    frac_pos = zeros(3,1);
+    time = 0;
+    
+    tic
+    line = fgetl(file); %the first line
+    while ischar(line)
+        if strcmp(pos_line, line)
+            time = time + 1;
+            if time > skip_steps
+                step = step + 1;
+                %Faster way should be possible, by reading all coor at
+                %once instead of the loops, but good enough for now
+                for atom = 1:nr_atoms %loop over the atoms              
+                    line = strsplit(fgetl(file)); %the next line
+                    for j = 1:3 
+                        frac_pos(j) = sscanf(line{j+2}, '%f');
+                    end
+                    % Not very efficient, but easy to implement:
+                    cart = frac_to_cart(frac_pos, lattice);
+                    sim_data.cart_pos(:,atom,step) = cart;
+                end
+            end % < time
+            if mod(step+1,2500) == 0 %To see that stuff is still happening:
+                fprintf('Reading timestep %d after %f seconds. \n', step, toc)
+            end
+        end %strcmp
+        line = fgetl(file); %the next line         
+    end
+    fclose(file);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%

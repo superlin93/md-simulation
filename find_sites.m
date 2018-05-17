@@ -57,12 +57,15 @@ function [sites, finished] = find_sites(sim_data, material, nr_parts)
             pos2 = sites_pos(:,site2);
             dist = sqrt(calc_dist_sqrd_frac(pos1, pos2, lattice));
             if dist < 2*dist_close % Make dist_close smaller to prevent overlapping sites:
-                fprintf('WARNING! Sites are overlapping with the chosen dist_close (%d), making dist_close smaller! \n', dist_close)
+                fprintf('WARNING! Crystallographic sites are overlapping with the chosen dist_close (%d), making dist_close smaller! \n', dist_close)
                 dist_close = 0.5*(dist - 0.01); % -0.01 for extra certainty
                 fprintf('dist_close changed to %d \n', dist_close)
                 if dist_close < 0.25 %Angstrom
-                    disp('ERROR! ERROR! Two sites are within half an Angstrom of each other')
-                    disp('ERROR! This is NOT realistic, check/change the given site locations!')
+                    disp('ERROR! ERROR! Two crystallographic sites are within half an Angstrom of each other')
+                    disp('ERROR! This is NOT realistic, check/change the given crystallographic site locations in known_materials.m!')
+                    fprintf('ERROR! Sites number %d and %d are overlapping \n', site1, site2) 
+                    fprintf('ERROR! Coordinates are: (%d, %d, %d) and (%d, %d, %d) \n', ... 
+                    pos1(1), pos1(2), pos1(3), pos2(1), pos2(2), pos2(3))                    
                     return
                 end
             end
@@ -71,13 +74,15 @@ function [sites, finished] = find_sites(sim_data, material, nr_parts)
     close_sqrd = dist_close*dist_close; % to avoid taking the root everytime
 % Necessary matrices:
     atom_site = zeros(sim_data.nr_steps, sim_data.nr_diffusing); % A value of zero means its not at a known site
-    site_occup = zeros(nr_sites,1);
+    site_occup = zeros(nr_sites,nr_parts);
     transitions = zeros(nr_sites);
     trans_counter = 0;
     all_trans = zeros(1,4);
     succes = zeros(nr_sites, nr_sites, nr_parts);
 %%  Loop over all times and diffusing atoms: 
     diff_atom = 0;
+    part = 1;
+    end_step = sim_data.nr_steps;
     disp('Determining the site positions of all diffusing atoms:')
     for atom = sim_data.start_diff_elem:sim_data.end_diff_elem
         diff_atom = diff_atom + 1;
@@ -85,7 +90,7 @@ function [sites, finished] = find_sites(sim_data, material, nr_parts)
         not_found = true;
         site = 0;
         time_start = 1;
-        while not_found
+        while not_found && time_start < end_step
             if site < nr_sites
                 site = site + 1;
             else
@@ -99,18 +104,20 @@ function [sites, finished] = find_sites(sim_data, material, nr_parts)
                 % Atom is at this site
                 atom_site(time_start, diff_atom) = site;
                 % Increase occupancy of this site    
-                site_occup(site) = site_occup(site) + 1; 
+                site_occup(site, part) = site_occup(site, part) + 1; 
                 prev_site = site; % Update previous site for next transition
             end
         end               
         % After the first site has been found:
-        for time = time_start+1:sim_data.nr_steps
+        for time = time_start+1:sim_data.nr_steps   
+           % Divide the simulation in multiple part's for statistics:
+            part = ceil(time/part_size);
             pos_atom = sim_data.frac_pos(:,atom,time);           
         % First check the site found at the last time_step, since it's the most likely position:
             dist = calc_dist_sqrd_frac(pos_atom, sites_pos(:, prev_site), lattice);
             if dist < close_sqrd
                 atom_site(time, diff_atom) = prev_site; % Atom is at this site   
-                site_occup(prev_site) = site_occup(prev_site) + 1; % Increase occupancy of this site
+                site_occup(prev_site, part) = site_occup(prev_site, part) + 1; % Increase occupancy of this site
                 trans_start = time + 1;
             else %not found at the previous position: 
             % Loop over all sites, exit the loop once a site has been found.
@@ -124,7 +131,7 @@ function [sites, finished] = find_sites(sim_data, material, nr_parts)
                     % Atom is at this site
                         atom_site(time, diff_atom) = site;
                     % Increase occupancy of this site    
-                        site_occup(site) = site_occup(site) + 1;    
+                        site_occup(site, part) = site_occup(site, part) + 1;    
                     end
                 end
             % If a transition happened, remember some things:
@@ -136,8 +143,6 @@ function [sites, finished] = find_sites(sim_data, material, nr_parts)
                     all_trans(trans_counter,3) = site; %the final position     
                     all_trans(trans_counter,4) = trans_start; %the time the atom left it's previouw position
                     all_trans(trans_counter,5) = time; % the timestep (at the end of the transition)
-                    % Divide the simulation in multiple part's for statistics:
-                    part = ceil(time/part_size);
                     succes(prev_site, site, part) = succes(prev_site, site, part) + 1;  
                     prev_site = site;
                 end
@@ -208,7 +213,8 @@ function [sites, finished] = find_sites(sim_data, material, nr_parts)
     sites.frac_pos = sites_pos;
     sites.cart_pos = cart_pos;
     sites.site_names = names;
-    sites.occupancy = site_occup;
+    sites.occupancy = sum(site_occup, 2);
+    sites.occup_parts = site_occup;
     sites.atoms = atom_site;
     sites.transitions = transitions;
     sites.all_trans = all_trans;

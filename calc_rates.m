@@ -54,7 +54,8 @@ function [jump_names, jumps_total, rates, e_act] = calc_rates(sites, sim_data)
     
     %% Calculate activation energies, jumps rates per atom per second, and the standard deviation:
     rates = zeros(nr_combi,2);
-    e_act = zeros(nr_combi,1);
+    temp_e_act = zeros(nr_combi,nr_parts);
+    e_act = zeros(nr_combi,2);
     nr_diff_atoms = size(sites.atoms,2); %nr of diffusing atoms
     jump_freqs = jumps./(nr_diff_atoms*(sim_data.total_time/nr_parts)); %obtain the jump frequency per diffusing atom
     jumps_total = sum(jumps, 2);  
@@ -64,28 +65,57 @@ function [jump_names, jumps_total, rates, e_act] = calc_rates(sites, sim_data)
         % The standard deviation
         rates(i,2) = std(jump_freqs(i,:));
     end
-    
+
     % The activation energy in eV (ASSUMING IONS WITH A +1 CHARGE NOW!)
     for i = 1:nr_combi
-        if rates(i,1) > 0
-            % Split jump_names        
-            names = strsplit(jump_names{i}, '_to_');
-            for j = 1:nr_stable_names % Find the occupancy of the starting site:
-                if strcmp(sites.stable_names{j}, names{1})
-                    atom_percentage = sites.atom_locations(j);
-                end
+        % Split jump_names        
+        names = strsplit(jump_names{i}, '_to_');
+        for j = 1:nr_stable_names % Find the occupancy of the starting site:
+            if strcmp(sites.stable_names{j}, names{1})
+                name_nr = j;
             end
-     % The effective rate, i.e. how long an atom on average stays at this site:
-            eff_rate = jumps_total(i)/(atom_percentage*sim_data.total_time*sim_data.nr_diffusing);
+        end
+        
+        for part = 1:nr_parts
+            if jumps(i,part) > 0
+                 atom_percentage = sites.atom_loc_parts(name_nr,part);
+            % The effective rate, i.e. how long an atom on average stays at this site:
+                %eff_rate = jumps_total(i)/(atom_percentage*sim_data.total_time*sim_data.nr_diffusing);
+                eff_rate = jumps(i, part)/(atom_percentage*sim_data.nr_diffusing*(sim_data.total_time/nr_parts));
+                if strcmp(names{1}, names{2})
+                % For A-A jumps divide by two for a fair comparison of A-A jumps vs. A-B and B-A)
+                    eff_rate = eff_rate/2; 
+                end
+                % The average activation energy:
+                temp_e_act(i,part) = -log(eff_rate/sim_data.attempt_freq) * ...
+                    (sim_data.k_boltzmann * sim_data.temperature)/sim_data.e_charge;                 
+                if temp_e_act(i,part) < 0 
+                   %because eff_rate is bigger as attempt_freq, caused by low site-occupancy...
+                   %temp_e_act(i,part) = 0.0;
+                   disp('Warning! Negative activation energy found')%, putting it at zero.') 
+                   disp('This is caused by a low value in sites.atom_loc_parts, check if this occupancy is realistic!') 
+                end
+            else %When no jumps occur the activation energy is unknown:
+                temp_e_act(i,part) = NaN;
+            end
+        end
+        
+        %Calculate the activation energy based on the ENTIRE simulated
+        %time, to get a correct energy for jumps which happen only a few
+        %times during the simulation, take the standard deviation based on the 
+        %different activation energies due to different amounts of jumps in the different parts:
+        if sum(jumps(i,:)) > 0
+            atom_percentage = mean(sites.atom_loc_parts(name_nr, :));
+            eff_rate = sum(jumps(i,:))/(atom_percentage*sim_data.nr_diffusing*sim_data.total_time);
             if strcmp(names{1}, names{2})
             % For A-A jumps divide by two for a fair comparison of A-A jumps vs. A-B and B-A)
                 eff_rate = eff_rate/2; 
             end
-            % The average activation energy:
+           % The activation energy for this type of jump:
             e_act(i,1) = -log(eff_rate/sim_data.attempt_freq) * ...
-                (sim_data.k_boltzmann * sim_data.temperature)/sim_data.e_charge; 
-        else %When no jumps occur the activation energy is unknown:
-            e_act(i,:) = NaN;
+                    (sim_data.k_boltzmann * sim_data.temperature)/sim_data.e_charge;    
+            % Estimate of the standard deviation:
+            e_act(i,2) = nanstd(temp_e_act(i,:));
         end
     end
     

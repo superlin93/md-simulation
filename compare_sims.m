@@ -1,18 +1,22 @@
-function compare_sims()
+function compare_sims(folder)
 % Compare the results (per property) from several different foldes and temperatures
 % Combine upfolder, subs and temps to loop over all folders
 % The results are saved in 'compare_file', from which the plots are made
-
-    % Folders and subfolders to read:
-    folder = 'Li3PS4/';
-    subfolder = {'22Li/', '24Li/', '26Li/', 'Br22Li/', 'O24Li/'};
-    temps = {'450K', '600K', '750K'};
+ 
+    temperatures = {'450K'; '600K'; '750K'};
     
-    compare_file = [folder, 'sims_compare.mat'];
+    % Read all subfolders in 'folder':
+    files = dir(folder);
+    dirs = [files.isdir];
+    temps = files(dirs);  
+    % remove '.' and '..'
+    subfolder = temps(3:end);
+    
+    compare_file = [folder, '/sims_compare.mat'];
     % Load or construct the comparison file:
     if ~exist(compare_file, 'file')
         disp('sims_compare.mat not found, reading the data from other files')
-        sims_comp = read_in_sims(folder, subfolder, temps);
+        sims_comp = read_in_sims(folder, subfolder, temperatures);
         save(compare_file, 'sims_comp')
     else
         disp('sims_compare found')
@@ -20,17 +24,17 @@ function compare_sims()
     end
     
     %Plot the results in the compare_file:
-    plot_comparison(sims_comp, subfolder) 
+    plot_comparison(sims_comp) 
 end
 
-function plot_comparison(sims_comp, subs)
+function plot_comparison(sims_comp)
 % Plots all the properties from props_to_plot vs. temperature for the
 % simulations given in sims_comp
 
     %Properties with 1 value per simulation:
     props_to_plot = {'vibration_amp', 'attempt_freq',  ...
         'tracer_diffusion', 'tracer_conductivity', ...  
-        'total_occup', 'frac_collective', 'jump_diffusion', 'correlation_factor'};
+        'total_occup', 'frac_collective' , 'jump_diffusion', 'correlation_factor'};
     titles_of_plots = {'Vibration amplitude (Angstrom)', 'Attempt frequency (Hz)',  ...
        'Tracer diffusivity (m^2/sec)', 'Tracer conductivity (S/m)',...   
        'Known site occupation (%)', 'Collective jumps (%)', ...
@@ -40,8 +44,8 @@ function plot_comparison(sims_comp, subs)
     multi_props_to_plot  = {'e_act', 'rates'};
     multi_titles_of_plots = {'Activation energy (eV)', 'Jump rate (Hz)'};
    
-    linestyles = {'-o', '-^', '-*', '-p', '-+'};
-    pointstyles = {'+', 'o', '*', '+', 'o', '*', '+', 'o', '*', '+', 'o', '*', '+', 'o', '*'}
+    linestyles = {'-o', '-^', '-*', '-p', '-+', '-d', '-v', '-<', '->'};
+    pointstyles = {'+', 'o', '*', '+', 'o', '*', '+', 'o', '*', '+', 'o', '*', '+', 'o', '*', '+', 'o', '*', '+', 'o', '*', '+'};
     
     sims = fieldnames(sims_comp);
     for i = 1:numel(sims) 
@@ -92,10 +96,10 @@ function plot_comparison(sims_comp, subs)
             temp_y = sims_comp.(sims{i}).(multi_props_to_plot{a})(:,1)';
             plot(temp_x, temp_y, pointstyles{i}, 'LineWidth', 2.0, 'MarkerSize', 10.0)
         end       
-        legend(subs)
+        %legend(subs.name)
         ax.XTick = temp_x; 
         % !! Assuming the same jump names in all simulations being compared !!
-        ax.XTickLabels = sims_comp.(sims{1}).jump_names
+        ax.XTickLabels = sims_comp.(sims{1}).jump_names;
         ax.XTickLabelRotation = 90;   
         grid('on')
         % Log scale is better in some cases:
@@ -106,13 +110,13 @@ function plot_comparison(sims_comp, subs)
     end
 end
     
-function sims_comp = read_in_sims(upfolder, subs, temps)
+function sims_comp = read_in_sims(upfolder, subs, temperatures)
 % Combine upfolder, subs and temps to loop over all folders
 % and read in certain data of all the given simulations to compare them
 % easily using plot_comparisons
-    for i = 1:size(subs,2)
-        for j = 1:size(temps,2)
-            folder = [upfolder, subs{i}, temps{j}];
+    for i = 1:size(subs,1)
+        for j = 1:size(temperatures,1)
+            folder = [upfolder, '/', subs(i).name, '/', temperatures{j}];
             sim_data_file = [folder, '/simulation_data.mat'];
             sites_file = [folder, '/sites.mat'];            
             if exist(sim_data_file, 'file') &&  exist(sites_file, 'file')
@@ -123,6 +127,7 @@ function sims_comp = read_in_sims(upfolder, subs, temps)
                 info = read_sim_info(sim_data, sites);
                 % The 'name' of the simulation:
                 sim_name = strrep(folder, '/', '_');
+                sim_name = strrep(sim_name, '.', '');
                 sims_comp.(sim_name) = info;
             elseif exist(sim_data_file, 'file')
                 fprintf('sites.mat NOT found in given folder: %s \n', folder)                   
@@ -139,6 +144,7 @@ function info = read_sim_info(sim_data, sites)
 % All the info wanted from sim_data:
     info.temperature = sim_data.temperature;
     info.attempt_freq = sim_data.attempt_freq;
+    info.attempt_freq_std = sim_data.std_attempt_freq;
     info.vibration_amp = sim_data.vibration_amp;
     info.tracer_diffusion = sim_data.tracer_diffusion;
     info.tracer_conductivity = sim_data.tracer_conductivity;

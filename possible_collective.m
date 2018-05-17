@@ -24,28 +24,31 @@ function [collective, coll_jumps, coll_matrix, multi_coll, uncoll_count] = ...
     if nr_jumps > 1 % For only 1 jump no correlations can occur
         for i = 1:nr_jumps-1 % -1 because no need to check the last one
             j = i + 1;
-            while j <= nr_jumps && sites.all_trans(orig(i),1) ~= sites.all_trans(orig(j),1) ... %different atoms
-                    && (times(j)-times(i) <= coll_steps)  %time correlation is ok...
-            % The site numbers of start and end sites 
-                start_site_i = sites.all_trans(orig(i),2); %start sites
-                start_site_j = sites.all_trans(orig(j),2);
-                end_site_i = sites.all_trans(orig(i),3); %end sites
-                end_site_j = sites.all_trans(orig(j),3);                    
-                % Check distances between sites (all combinations: ss, se (= start-end),
-                % es, ee)
-                ss_dist_sqrd = calc_dist_sqrd_frac(sites.frac_pos(:,start_site_i), sites.frac_pos(:,start_site_j), lattice);
-                se_dist_sqrd = calc_dist_sqrd_frac(sites.frac_pos(:,start_site_i), sites.frac_pos(:,end_site_j), lattice);
-                es_dist_sqrd = calc_dist_sqrd_frac(sites.frac_pos(:,end_site_i), sites.frac_pos(:,start_site_j), lattice);
-                ee_dist_sqrd = calc_dist_sqrd_frac(sites.frac_pos(:,end_site_i), sites.frac_pos(:,end_site_j), lattice);
-                if ss_dist_sqrd <= coll_dist_sqrd || se_dist_sqrd <= coll_dist_sqrd || ... 
+            while j <= nr_jumps && (times(j)-times(i) <= coll_steps) %time correlation is ok..
+                if sites.all_trans(orig(i),1) ~= sites.all_trans(orig(j),1) ... %different atoms
+                    % The site numbers of start and end sites 
+                    start_site_i = sites.all_trans(orig(i),2); %start sites
+                    start_site_j = sites.all_trans(orig(j),2);
+                    end_site_i = sites.all_trans(orig(i),3); %end sites
+                    end_site_j = sites.all_trans(orig(j),3);                    
+                    % Check distances between sites (all combinations: ss, se (= start-end),
+                    % es, ee)
+                    ss_dist_sqrd = calc_dist_sqrd_frac(sites.frac_pos(:,start_site_i), sites.frac_pos(:,start_site_j), lattice);
+                    se_dist_sqrd = calc_dist_sqrd_frac(sites.frac_pos(:,start_site_i), sites.frac_pos(:,end_site_j), lattice);
+                    es_dist_sqrd = calc_dist_sqrd_frac(sites.frac_pos(:,end_site_i), sites.frac_pos(:,start_site_j), lattice);
+                    ee_dist_sqrd = calc_dist_sqrd_frac(sites.frac_pos(:,end_site_i), sites.frac_pos(:,end_site_j), lattice);
+                    if ss_dist_sqrd <= coll_dist_sqrd || se_dist_sqrd <= coll_dist_sqrd || ... 
                         es_dist_sqrd <= coll_dist_sqrd || ee_dist_sqrd <= coll_dist_sqrd
                     %fprintf('Possibly correlated jump detected at timestep %d, atoms involved are: %d and %d \n',...
                     %    times(i), sites.all_trans(orig(i),1), sites.all_trans(orig(j),1))
                     % remember the numbers in all_trans of these two jumps
-                    coll_count = coll_count + 1;
-                    collective(coll_count, :) = [orig(i), orig(j)] ;
-                    coll_jumps(coll_count, :) = {[sites.site_names{start_site_i}, '_to_', sites.site_names{end_site_i}], ... 
-                        [sites.site_names{start_site_j}, '_to_', sites.site_names{end_site_j}]}; 
+                        coll_count = coll_count + 1;
+                        collective(coll_count, :) = [orig(i), orig(j)] ;
+                        coll_jumps(coll_count, :) = {[sites.site_names{start_site_i}, '_to_', sites.site_names{end_site_i}], ... 
+                            [sites.site_names{start_site_j}, '_to_', sites.site_names{end_site_j}]}; 
+                    else
+                        uncoll_count = uncoll_count + 1;
+                    end
                 else
                     uncoll_count = uncoll_count + 1;
                 end
@@ -56,7 +59,7 @@ function [collective, coll_jumps, coll_matrix, multi_coll, uncoll_count] = ...
     fprintf('Total number of jumps: %d \n', nr_jumps)
     fprintf('Number of possibly collective jumps found: %d \n', coll_count)
     fprintf('Number of solo jumps found: %d \n', uncoll_count)
-    
+
     % Analyse what types of jumps are collective and make a matrix of all jump combinations.
     coll_matrix = zeros(size(sites.jump_names,1));
     if coll_count > 0

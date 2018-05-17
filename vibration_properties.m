@@ -29,6 +29,7 @@ function [attempt_freq, vibration_amp, std_attempt_freq] = vibration_properties(
             end
         end
         freq_mean(atom) = meanfreq(speed(atom,:), fs);
+
         % Fourier transform speed, and get the frequency   
         trans = fft(speed(atom,:));
         two_sided = abs(trans/length);
@@ -47,12 +48,12 @@ function [attempt_freq, vibration_amp, std_attempt_freq] = vibration_properties(
         figure     % Plot the histogram of vibrational amplitudes
         h = histfit(amplitude, 100); 
         hold on
-        %plot([-vibration_std, vibration_std], [8000 8000], 'g', 'LineStyle', ':', 'LineWidth', 3)
+        %plot([-vibration_amp, vibration_amp], [8000 8000], 'g', 'LineStyle', ':', 'LineWidth', 3)
         %xlim([-2 2])
         h(2).LineWidth = 3;
         title('Histogram of vibrational amplitudes with fitted Gaussian')
         xlabel('Amplitude (Angstrom)')
-        ylabel('Occurence (a.u.)')     
+        ylabel('Occurrence (a.u.)')     
         set(gca, 'YTickLabel','')
         hold off
         
@@ -67,7 +68,7 @@ function [attempt_freq, vibration_amp, std_attempt_freq] = vibration_properties(
         plot(f, smoothed, 'LineWidth', 3)
         %title('Frequency spectrum of diffusing element')
         xlabel('Frequency (Hz)')
-        ylabel('Occurence (a.u)')
+        ylabel('Occurrence (a.u.)')
         set(gca, 'YTickLabel','')
         % Plot the attempt frequency:
         plot([attempt_freq attempt_freq],0:1, '-r', 'LineWidth', 3)
