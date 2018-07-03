@@ -4,7 +4,8 @@ function analyse_md(folder, diff_elem, material)
 % When you use this code in academic work please cite the accompanying paper: 
 % Analysis of diffusion in solid state electrolytes through MD-simulations, 
 % improvement of the Li-ion conductivity in \ce{\beta-Li3PS4} as an example;
-% Niek J.J. de Klerk, Eveline van der Maas and Marnix Wagemaker (submitted)
+% Niek J.J. de Klerk, Eveline van der Maas and Marnix Wagemaker
+% ACS Applied Energy Materials, (2018), doi: 10.1021/acsaem.8b00457
 
 %% Settings:
 % !!! WARNING! The settings for equil_time, diffusion_dimensions, z_ion,
