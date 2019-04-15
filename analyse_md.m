@@ -76,17 +76,7 @@ function analyse_md(folder, diff_elem, material)
         end
     else % sim_data exists already:
         disp('Found simulation data file in given folder')
-        load(sim_data_file) 
-        %TEMPORARY!
-        sim_data.diffusion_dim = 3;
-        if isfield(sim_data, 'vibration_std')
-            sim_data.vibration_amp = sim_data.vibration_std;
-        end
-        if isfield(sim_data, 'start_diff_atom')
-            sim_data.start_diff_elem = sim_data.start_diff_atom;
-            sim_data.end_diff_elem = sim_data.end_diff_atom;
-        end
-        save(sim_data_file, 'sim_data')
+        load(sim_data_file)
     end    
     
 %% Find sites and transitions  
@@ -142,9 +132,6 @@ function analyse_md(folder, diff_elem, material)
             plot_collective(sites);
         end
     end
-    % Binnen show_pics doen uiteindelijk...
-    % PHONONS IS NUTTELOOS, SNELHEDEN WEL HOUDEN...
-    %phonons_speeds(sim_data, sites)
     
     %% Radial distribution functions
     % Check if rdfs == true, and if the file does not exist yet:
