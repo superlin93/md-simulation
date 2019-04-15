@@ -25,7 +25,7 @@ function analyse_md(folder, diff_elem, material)
     % Radial Distribution Functions
     % !!! WARNING! rdf_res and rdf_max_dist are ONLY used when creating the rdfs.mat file !!!    
     % !!! RENAME OR REMOVE THE RDF-FILE IF YOU WANT TO CHANGE THESE SETTINGS !!!   
-    rdfs = true; % Calculate and show Radial Distribution Functions
+    rdfs = false; % Calculate and show Radial Distribution Functions
     rdf_res = 0.1; % Resolution of the RDF bins in Angstrom
     rdf_max_dist = 10; %Maximal distance of the RDF in Angstrom 
 
@@ -35,13 +35,22 @@ function analyse_md(folder, diff_elem, material)
     start_end = [5000; 7500]; % The time-steps for which to make a movie ([start at step; end at step])
        
  %% Standard file names:
-    outcar_file = [folder, '/OUTCAR'];
-    vasprun_file = [folder, '/vasprun.xml']; %Backup for if the atomic positions are not in the OUTCAR
+    % For the outputs:
     sim_data_file = [folder, '/simulation_data.mat'];
     sites_file = [folder, '/sites.mat'];
     rdf_file = [folder, '/rdfs.mat'];
     movie_file = [folder, '/jumps_movie.mp4'];
 
+    % For VASP:
+    outcar_file = [folder, '/OUTCAR'];
+    vasprun_file = [folder, '/vasprun.xml']; %Backup for if the atomic positions are not in the OUTCAR   
+    
+    % For LAMMPS files:
+    lammps_input = [folder, '/in.500'];
+    lammps_output = [folder, '/out.500'];
+    lammps_structure = [folder, '/structure.dat'];
+    lammps_xyz = [folder, '/dynamics.xyz'];
+    
 %% Get simulation data:
     fprintf('Folder given is: %s \n', folder) 
     if ~exist(folder, 'dir') % Check if given folder exists
@@ -55,15 +64,29 @@ function analyse_md(folder, diff_elem, material)
         % Check for OUTCAR file:
         if exist(outcar_file, 'file')
             % Read in the simulation data from outcar_file
-            fprintf('Reading simulation data from %s, this can take a while.... \n', outcar_file)            
+            fprintf('Reading VASP simulation data from %s, this can take a while.... \n', outcar_file)            
             sim_data = read_vasp(outcar_file, vasprun_file, equil_time, diff_elem, sim_data_file, diffusion_dimensions, z_ion);
+        elseif exist(lammps_xyz, 'file')
+            fprintf('Reading LAMMPS simulation data from %s and some other files, this can take a while.... \n', lammps_xyz)            
+            sim_data = read_lammps(lammps_xyz, lammps_input, lammps_output, lammps_structure, ...
+                 equil_time, diff_elem, sim_data_file, diffusion_dimensions, z_ion);
         else
-            fprintf('ERROR! %s not found! \n', outcar_file)   
+            fprintf('ERROR! File containing MD-output not found in given folder! \n')   
             return
         end
     else % sim_data exists already:
         disp('Found simulation data file in given folder')
         load(sim_data_file) 
+        %TEMPORARY!
+        sim_data.diffusion_dim = 3;
+        if isfield(sim_data, 'vibration_std')
+            sim_data.vibration_amp = sim_data.vibration_std;
+        end
+        if isfield(sim_data, 'start_diff_atom')
+            sim_data.start_diff_elem = sim_data.start_diff_atom;
+            sim_data.end_diff_elem = sim_data.end_diff_atom;
+        end
+        save(sim_data_file, 'sim_data')
     end    
     
 %% Find sites and transitions  
@@ -119,6 +142,9 @@ function analyse_md(folder, diff_elem, material)
             plot_collective(sites);
         end
     end
+    % Binnen show_pics doen uiteindelijk...
+    % PHONONS IS NUTTELOOS, SNELHEDEN WEL HOUDEN...
+    %phonons_speeds(sim_data, sites)
     
     %% Radial distribution functions
     % Check if rdfs == true, and if the file does not exist yet:
