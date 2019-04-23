@@ -163,10 +163,8 @@ function sim_data = read_lammpsfiles(xyz_file, lammps_input, lammps_output, lamm
 
 %% Now read positions of all atoms during the simulation from the xyz-file:
     file = fopen(xyz_file);
-
-    sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps); % Define cartesian positions array
-% For testing avoid arrays of several gigabytes:
-%    sim_data.cart_pos = zeros(3, sim_data.nr_atoms, 50);
+    % Define cartesian positions array
+    sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps, 'single'); %'single' gives smaller files in comparison to the normal setting of 'double' 
     nr_atoms = sim_data.nr_atoms;
     
     pos_line = 'Atoms.'; %after which word the positions of the next timestep begin
@@ -202,7 +200,7 @@ function sim_data = read_lammpsfiles(xyz_file, lammps_input, lammps_output, lamm
     if step ~= sim_data.nr_steps
         sim_data.nr_steps = step;
         temp_cart = sim_data.cart_pos(:, :, 1:step);
-        sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps);
+        sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps, 'single');
         sim_data.cart_pos = temp_cart;
     end
     % Total simulated time:

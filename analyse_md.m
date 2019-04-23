@@ -1,4 +1,5 @@
 function analyse_md(folder, diff_elem, material)
+% Version 1.10
 % Materials known: 'argyrodite', 'latp', 'LiSnPS', 'na3ps4', 'li3ps4_beta' and 'MnO2_lambda'
 
 % When you use this code in academic work please cite the accompanying paper: 
@@ -67,7 +68,7 @@ function analyse_md(folder, diff_elem, material)
             fprintf('Reading VASP simulation data from %s, this can take a while.... \n', outcar_file)            
             sim_data = read_vasp(outcar_file, vasprun_file, equil_time, diff_elem, sim_data_file, diffusion_dimensions, z_ion);
         elseif exist(lammps_xyz, 'file')
-            fprintf('Reading LAMMPS simulation data from %s and some other files, this can take a while.... \n', lammps_xyz)            
+            fprintf('Reading LAMMPS simulation data from %s and the other files given, this can take a while.... \n', lammps_xyz)            
             sim_data = read_lammps(lammps_xyz, lammps_input, lammps_output, lammps_structure, ...
                  equil_time, diff_elem, sim_data_file, diffusion_dimensions, z_ion);
         else

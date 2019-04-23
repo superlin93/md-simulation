@@ -93,6 +93,8 @@ function plots_from_displacement(sim_data, sites, resolution)
                 pos(i) = 1 + floor((sim_data.cart_pos(i,atom,time) - min_coor(i))/resolution);
                 if pos(i) < 1 % LAMMPS sometimes gives negative values for pos(i), quick fix:
                    pos(i) = length(i) + pos(i);
+                elseif pos(i) > length(i) % and sometimes too large values:
+                    pos(i) = pos(i) - length(i);
                 end
             end
             box(pos(1),pos(2),pos(3)) = box(pos(1),pos(2),pos(3)) + 1;

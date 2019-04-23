@@ -1,9 +1,14 @@
 %%%%%%%%%%%%%%%%%%%%%%
 function sim_data = frac_and_disp(sim_data)
+% Make sure that there are timesteps
+    if sim_data.nr_steps == 0
+        error('ERROR! No timesteps left after throwing away the equilibration time, check if the equilibration time in analyse_md is not too short!');
+    end
+    
 % Calculate cartesian coordinates and the displacement of the atoms...
     disp('Transforming cartesian to fractional coordinates and calculating displacement')
-    sim_data.frac_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps);
-    sim_data.displacement = zeros(sim_data.nr_atoms, sim_data.nr_steps);
+    sim_data.frac_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps, 'single');
+    sim_data.displacement = zeros(sim_data.nr_atoms, sim_data.nr_steps, 'single');
 
     d = zeros(3,1);
     for atom = 1:sim_data.nr_atoms

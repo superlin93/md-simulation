@@ -119,7 +119,7 @@ function sim_data = read_outcar(outcar_file, vasprun_file, sim_data)
     fprintf('Throwing away the first %4.0f steps because of the chosen equilibration time. \n', sim_data.equilibration_steps)
     
 %% Now read positions of all atoms during the simulation:
-    sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps); % Define cartesian positions array
+    sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps, 'single'); % Define cartesian positions array
     nr_atoms = sim_data.nr_atoms;
     step = 0;
     skip_steps = sim_data.equilibration_steps;
@@ -163,7 +163,7 @@ function sim_data = read_outcar(outcar_file, vasprun_file, sim_data)
     if step ~= sim_data.nr_steps
         sim_data.nr_steps = step;
         temp_cart = sim_data.cart_pos(:, :, 1:step);
-        sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps);
+        sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps, 'single');
         sim_data.cart_pos = temp_cart;
     end
     % Total simulated time:
