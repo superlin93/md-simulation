@@ -15,8 +15,15 @@ function [tracer_diff, tracer_conduc, particle_density, mol_per_liter] = ...
     % Concentration of diffusing atom in mol/L (1000 converts from m^3 to liters)
     mol_per_liter = particle_density/(1000*sim_data.avogadro);
     
-    % Mean Squared Displacement:        
-    displacement = sim_data.displacement(sim_data.start_diff_elem:sim_data.end_diff_elem, sim_data.nr_steps);
+    % Mean Squared Displacement:   
+    displacement = zeros(sim_data.nr_diffusing, 0);
+    count = 0;
+    for i = 1:sim_data.nr_atoms 
+         if sim_data.diffusing_atom(i) %Only for the diffusing atoms
+            count = count + 1;
+            displacement(count) = sim_data.displacement(i);
+         end
+    end
     sqrd_disp = displacement.^2;
     msd = mean(sqrd_disp); % In Angstrom^2
 

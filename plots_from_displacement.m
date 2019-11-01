@@ -1,15 +1,14 @@
 function plots_from_displacement(sim_data, sites, resolution)
 % Plots based on information from the displacement (mainly)
-%% Define some stuff:
-%% At which nr. the diffusing atoms start and end:
-    start_diff = sim_data.start_diff_elem;
-    end_diff = sim_data.end_diff_elem;
 
     %% Plot displacement for each diffusing atom:
     figure
     hold on
-    for i = start_diff:end_diff 
-        plot(sim_data.displacement(i,:))
+    
+    for i = 1:sim_data.nr_atoms 
+        if sim_data.diffusing_atom(i)%Loop over diffusing atoms
+            plot(sim_data.displacement(i,:))
+        end
     end
     hold off
     title('Displacement of diffusing element')
@@ -17,8 +16,17 @@ function plots_from_displacement(sim_data, sites, resolution)
     ylabel('Displacement (Angstrom)')
     
     %% Plot histogram of final displacement of diffusing atoms:
+    displacement = zeros(sim_data.nr_diffusing, 0);
+    count = 0;
+    for i = 1:sim_data.nr_atoms 
+         if sim_data.diffusing_atom(i) % For the diffusing atoms
+            count = count + 1;
+            displacement(count) = sim_data.displacement(i);
+         end
+    end
     figure
-    hist(sim_data.displacement(start_diff:end_diff,sim_data.nr_steps)')
+    hist(displacement)
+    %hist(sim_data.displacement(start_diff:end_diff,sim_data.nr_steps)')
     title('Histogram of displacement of diffusing element')
     xlabel('Displacement (Angstrom)')
     ylabel('Nr. of atoms')
@@ -86,19 +94,19 @@ function plots_from_displacement(sim_data, sites, resolution)
     box = zeros(length(1), length(2), length(3));
     % Now fill the box with densities:
     pos = zeros(3,1);
-    for atom = start_diff:end_diff 
+    for atom = 1:sim_data.nr_atoms 
+      if sim_data.diffusing_atom(atom) % For the diffusing atoms
         for time = 1:sim_data.nr_steps
             for i = 1:3
             % Calculate the position in the box
                 pos(i) = 1 + floor((sim_data.cart_pos(i,atom,time) - min_coor(i))/resolution);
                 if pos(i) < 1 % LAMMPS sometimes gives negative values for pos(i), quick fix:
                    pos(i) = length(i) + pos(i);
-                elseif pos(i) > length(i) % and sometimes too large values:
-                    pos(i) = pos(i) - length(i);
                 end
             end
             box(pos(1),pos(2),pos(3)) = box(pos(1),pos(2),pos(3)) + 1;
         end
+      end
     end
     % Show it more nicely by smoothing the density:
     box_smooth = smooth3(box, 'gaussian');

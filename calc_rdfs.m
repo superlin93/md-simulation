@@ -28,7 +28,8 @@ function rdf = calc_rdfs(sites, sim_data, res, max_dist)
     atom_rdf = zeros(nr_elem, max_bin);
 %% Main loop:    
     diff_elem = 0;
-    for atom = sim_data.start_diff_elem:sim_data.end_diff_elem %Only for the diffusing element
+    for atom = 1:sim_data.nr_atoms 
+      if sim_data.diffusing_atom(atom) %Only for the diffusing element        
         diff_elem = diff_elem + 1;
         for time = 1:sim_data.nr_steps
             atom_rdf(:,:) = 0.0; % Calculate RDF for THIS atom at THIS time step
@@ -69,6 +70,7 @@ function rdf = calc_rdfs(sites, sim_data, res, max_dist)
             end 
         end
         fprintf('*') % Shows that one atom is finished
+      end
     end
     fprintf(' \n')
     %fprintf('Finished calculating RDFs after %f minutes. \n', toc/60)

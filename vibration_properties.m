@@ -15,7 +15,8 @@ function [attempt_freq, vibration_amp, std_attempt_freq] = vibration_properties(
     freq_mean = zeros(sim_data.nr_diffusing, 1);
     atom = 0;
     vib_count = 0;
-    for i = sim_data.start_diff_elem:sim_data.end_diff_elem %Loop over diffusing atoms
+    for i = 1:sim_data.nr_atoms 
+     if sim_data.diffusing_atom(i)%Loop over diffusing atoms
         atom = atom + 1;
         for time = 2:sim_data.nr_steps
             % speed is in Angstrom/step
@@ -35,6 +36,7 @@ function [attempt_freq, vibration_amp, std_attempt_freq] = vibration_properties(
         two_sided = abs(trans/length);
         one_sided(atom,:) = two_sided(1:length/2 +1);
         one_sided(atom, 2:end-1) = 2*one_sided(atom, 2:end-1); %to get the right amplitude...
+     end
     end
     %% Extract the vibration amplitude   
    [mean_vib, vibration_amp] = normfit(amplitude);

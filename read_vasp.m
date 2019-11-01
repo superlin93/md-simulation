@@ -1,5 +1,6 @@
 function sim_data = read_vasp(outcar_file, vasprun_file, equil_time, diff_elem, output_file, diff_dim, z_ion)   
 % Reads in an OUTCAR-file from VASP
+% Made based on OUTCAR-files from VASP version 5.3.3 and version 5.4.1
     %% Define constants
     sim_data.e_charge = 1.60217657e-19; %Electron charge
     sim_data.k_boltzmann = 1.3806488e-23; %Boltzmann's constant 
@@ -24,21 +25,22 @@ function sim_data = read_vasp(outcar_file, vasprun_file, equil_time, diff_elem, 
     % Save sim_data in a .mat file:
     save(output_file, 'sim_data'); 
     
-    fprintf('Finished reading in the OUTCAR file after %f minutes \n', toc/60 ) 
+    fprintf('Finished reading in the settings and atomic positions after %f minutes \n', toc/60 ) 
 end
 
 function sim_data = read_outcar(outcar_file, vasprun_file, sim_data)
     time = 0;
+    nr_elements = 0;
     tic
-    pos_line = ' POSITION                                       TOTAL-FORCE (eV/Angst)'; %KEEP THE SPACES!
+
 %%  First read in things that are constant throughout the MD simulation:
     file = fopen(outcar_file);
     line = fgetl(file); %first line
     while time == 0
         temp = strsplit(line);
         if size(temp,2) > 1 % start comparing the text:
-            if strcmp(temp{2}, 'POSITION') % defines the start of a new time step
-                time = time + 1;
+            if strcmp(temp{2}, 'POSITION') && strcmp(temp{3}, 'TOTAL-FORCE') % defines the start of the first time step
+                time = time + 1; % Don't read in the positions at the first time step, because this is never necessary due to the equilibration time
             elseif strcmp(temp{2}, 'NSW') % The total number of MD steps
                 total_steps = str2double(temp{4});	
             elseif strcmp(temp{2}, 'direct') % The crystal lattice
@@ -49,19 +51,12 @@ function sim_data = read_outcar(outcar_file, vasprun_file, sim_data)
                         sim_data.lattice(i,j-1) = str2double(temp{j});
                     end
                 end
-            elseif strcmp(temp{2}, 'INCAR:') % the number of elements
-                nr_elements = 0;
-                line = fgetl(file);
-                temp = strsplit(line);
-                while size(temp,2) > 1 && strcmp(temp{2}, 'POTCAR:') 
-                    nr_elements = nr_elements + 1;
-                    sim_data.elements{nr_elements,1} = temp{4}; % The element
-                    line = fgetl(file);
-                    temp = strsplit(line);          
-                end
-                sim_data.nr_elements = nr_elements;
+            elseif strcmp(temp{2}, 'energy') && strcmp(temp{4}, 'atom') %line before 'energy of atom' contains element names
+                temp_prev = strsplit(line_prev);
+                nr_elements = nr_elements + 1;
+                sim_data.elements{nr_elements,1} = temp_prev{3}; % The element
             elseif strcmp(temp{2}, 'ions') % nr of ions per element
-                for j = 6:5+sim_data.nr_elements
+                for j = 6:5+nr_elements
                     per_elem = str2double(temp{j});
                     sim_data.nr_per_element(j-5, 1) = per_elem;
                 end
@@ -74,26 +69,52 @@ function sim_data = read_outcar(outcar_file, vasprun_file, sim_data)
             elseif strcmp(temp{2}, 'volume') % Volume of the crystal lattice simulated
                 sim_data.volume = str2double(temp{6})*1E-30; %Volume of the simulation, in m^3
             elseif strcmp(temp{2}, 'Mass') %Atomic masses as used by VASP (in u)
-                temp = strsplit(fgetl(file));
-                for j = 4:3+sim_data.nr_elements
+                line = fgetl(file);
+                temp = strsplit(line);
+                if length(temp) < 3+nr_elements %if mass is above 100 Vasp doesn't put a space between masses, so we have to split the string 
+                    for j = 4:length(temp) %check where the error is
+                        if length(temp{j}) > 6 %length of 6 is something like 100.99, so anything longer is wrong.
+                            %extract the correct masses
+                            correct_mass = strsplit(regexprep(temp{j},'\d*\.\d\d',' $0')); 
+                            correct_mass = correct_mass(2:end); 
+                            temp_mass = [temp, ' '];
+                            if length(correct_mass) > 2
+                                for k = 3:length(correct_mass); temp_mass = [temp_mass, ' ']; end;
+                            end
+                            temp_mass(j+2:end) = temp(j+1:end);
+                            for k = 1:length(correct_mass)
+                               temp_mass(j+k-1) = correct_mass(k); 
+                            end
+                            temp = temp_mass;
+                        end
+                    end
+                end
+                
+                for j = 4:3+nr_elements
                     elem_mass = str2double(temp{j});
                     sim_data.element_mass(j-3) = elem_mass;
                 end                
             end
         end
+        line_prev = line; %the previous line
         line = fgetl(file);
     end  
+    % Assign after reading in the constant things:
+    sim_data.nr_elements = nr_elements;
     
-    % Diffusing element specific:
+    %Assign elements and diffusing element:
     counter = 1;
     sim_data.atom_element = cell(sim_data.nr_atoms,1);
+    sim_data.diffusing_atom = false(sim_data.nr_atoms,1);
+    
     sim_data.nr_diffusing = 0;
     for i = 1:sim_data.nr_elements
+       % Where to find the diffusing atoms in sim_data, give the diffusing atoms the value 'true' 
         if strcmp(sim_data.elements{i}, sim_data.diff_elem)
-            sim_data.nr_diffusing = sim_data.nr_per_element(i);
-            % Where to find the diffusing atoms in sim_data.cart_pos (and others):
-            sim_data.start_diff_elem = counter; 
-            sim_data.end_diff_elem = counter + sim_data.nr_per_element(i) -1;
+            sim_data.nr_diffusing = sim_data.nr_diffusing + sim_data.nr_per_element(i);
+            for j = counter:(counter + sim_data.nr_per_element(i) - 1) 
+                sim_data.diffusing_atom(j) = true;
+            end    
         end
         % Which element each atom is:
         for j = counter:(counter + sim_data.nr_per_element(i) - 1) 
@@ -119,13 +140,16 @@ function sim_data = read_outcar(outcar_file, vasprun_file, sim_data)
     fprintf('Throwing away the first %4.0f steps because of the chosen equilibration time. \n', sim_data.equilibration_steps)
     
 %% Now read positions of all atoms during the simulation:
-    sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps, 'single'); % Define cartesian positions array
+    pos_line = ' POSITION                                       TOTAL-FORCE (eV/Angst)'; %KEEP THE SPACES!
+    % Using the entire pos_line is approx. 4 times faster than splitting and checking with strcmp(temp{3}, 'TOTAL-FORCE')
+    
+    sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps); % Define cartesian positions array
     nr_atoms = sim_data.nr_atoms;
     step = 0;
     skip_steps = sim_data.equilibration_steps;
     line = fgetl(file);
-    while ischar(line)
-        if strcmp(pos_line, line)            
+    while ischar(line)   
+        if strcmp(pos_line, line)
             time = time + 1;
             if time > skip_steps % ! Equilibration steps are thrown away!
                 step = step + 1; % The time step 
@@ -146,13 +170,10 @@ function sim_data = read_outcar(outcar_file, vasprun_file, sim_data)
     end
     fclose(file);
 
-    if step == 0 % No positions found in OUTCAR, so read them from vasprun.xml
-        disp('WARNING! The OUTCAR-file does not contain the atomic positions from the MD simulation!')
+    if step == 0 || time < 0.25*sim_data.nr_steps % No or very few positions found in OUTCAR, so read them from vasprun.xml
+        disp('WARNING! The OUTCAR-file is missing a lot of atomic positions from the MD simulation!')
         if ~exist(vasprun_file, 'file')
-            disp('EXIT! No atomic positions during the MD simulation found in the OUTCAR-file')
-            disp('EXIT! Put vasprun.xml in the folder to read the atomic positions from that file')
-            disp('EXIT! When vasprun.xml is in the folder run analyse_md again')
-            return %Completely quit analyse_md?
+            error('ERROR! Put vasprun.xml in the folder to read the atomic positions from that file, then run analyse_md again')
         else % USE vasprun.xml to read in coordinates
             [sim_data, step] = read_vasprunxml(vasprun_file, sim_data);
         end
@@ -163,7 +184,7 @@ function sim_data = read_outcar(outcar_file, vasprun_file, sim_data)
     if step ~= sim_data.nr_steps
         sim_data.nr_steps = step;
         temp_cart = sim_data.cart_pos(:, :, 1:step);
-        sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps, 'single');
+        sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps);
         sim_data.cart_pos = temp_cart;
     end
     % Total simulated time:

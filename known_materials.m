@@ -1,42 +1,42 @@
 function [names, pos, supercell] = known_materials(material)
 % The positions of diffusing atoms, and their names, in different materials
-    if strcmp(material, 'argyrodite')
+    if strcmpi(material, 'argyrodite')
        supercell = [1 1 1]; 
        fprintf('Material is: %s \n', material)         
        fprintf('Assuming a %d x %d x %d supercell \n', supercell(1), supercell(2), supercell(3))    
        [names, pos] = argyrodite(supercell);
        
-    elseif strcmp(material, 'latp')
+    elseif strcmpi(material, 'latp')
        supercell = [1 1 1]; 
        fprintf('Material is: %s \n', material)         
        fprintf('Assuming a %d x %d x %d supercell \n', supercell(1), supercell(2), supercell(3)) 
        [names, pos] = latp(supercell);
        
-    elseif strcmp(material, 'na3ps4')
+    elseif strcmpi(material, 'na3ps4')
        supercell = [2 2 2];
        fprintf('Material is: %s \n', material)         
        fprintf('Assuming a %d x %d x %d supercell \n', supercell(1), supercell(2), supercell(3)) 
        [names, pos] = na3ps4(supercell);
        
-    elseif strcmp(material, 'lisnps')
+    elseif strcmpi(material, 'lisnps')
        supercell = [1 1 1]; 
        fprintf('Material is: %s \n', material)         
        fprintf('Assuming a %d x %d x %d supercell \n', supercell(1), supercell(2), supercell(3))         
        [names, pos] = lisnps(supercell);
        
-    elseif strcmp(material, 'li3ps4_beta')
+    elseif strcmpi(material, 'li3ps4_beta')
        supercell = [1 1 2]; 
        fprintf('Material is: %s \n', material)         
        fprintf('Assuming a %d x %d x %d supercell \n', supercell(1), supercell(2), supercell(3))                 
        [names, pos] = li3ps4_beta(supercell);
        
-    elseif strcmp(material, 'mno2_lambda')
+    elseif strcmpi(material, 'mno2_lambda')
        supercell = [1 1 1]; 
        fprintf('Material is: %s \n', material)         
        fprintf('Assuming a %d x %d x %d supercell \n', supercell(1), supercell(2), supercell(3))    
        [names, pos] = mno2_lambda(supercell);             
        
-    elseif strcmp(material, 'lagp')
+    elseif strcmpi(material, 'lagp')
        supercell = [1 2 2]; 
        fprintf('Material is: %s \n', material)         
        fprintf('Assuming a %d x %d x %d supercell \n', supercell(1), supercell(2), supercell(3))    

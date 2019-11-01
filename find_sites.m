@@ -84,7 +84,8 @@ function [sites, finished] = find_sites(sim_data, material, nr_parts)
     part = 1;
     end_step = sim_data.nr_steps;
     disp('Determining the site positions of all diffusing atoms:')
-    for atom = sim_data.start_diff_elem:sim_data.end_diff_elem
+    for atom = 1:sim_data.nr_atoms 
+      if sim_data.diffusing_atom(atom) %Only for the diffusing atoms             
         diff_atom = diff_atom + 1;
         % First find the first site this atom at:
         not_found = true;
@@ -149,6 +150,7 @@ function [sites, finished] = find_sites(sim_data, material, nr_parts)
             end
         end  
         fprintf('*') % One atom has been finished...
+      end
     end
     fprintf('\n') % go to next line in output
     fprintf('Number of transitions between sites: %d \n', trans_counter)
@@ -157,7 +159,9 @@ function [sites, finished] = find_sites(sim_data, material, nr_parts)
     diff_atom = 0;
     time_start = 0;
     nr_trans_found = 0;
-    for atom = sim_data.start_diff_elem:sim_data.end_diff_elem
+
+    for atom = 1:sim_data.nr_atoms 
+      if sim_data.diffusing_atom(atom) %Only for the diffusing atoms             
         diff_atom = diff_atom + 1;
         prev_site = 0;
         % What to do with atoms starting outside a given site?
@@ -207,6 +211,7 @@ function [sites, finished] = find_sites(sim_data, material, nr_parts)
                 end
             end
         end
+      end
     end
     % Save things to sites:
     sites.site_radius = dist_close;

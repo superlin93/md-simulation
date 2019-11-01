@@ -1,5 +1,4 @@
 function analyse_md(folder, diff_elem, material)
-% Version 1.10
 % Materials known: 'argyrodite', 'latp', 'LiSnPS', 'na3ps4', 'li3ps4_beta' and 'MnO2_lambda'
 
 % When you use this code in academic work please cite the accompanying paper: 
@@ -7,6 +6,8 @@ function analyse_md(folder, diff_elem, material)
 % improvement of the Li-ion conductivity in \ce{\beta-Li3PS4} as an example;
 % Niek J.J. de Klerk, Eveline van der Maas and Marnix Wagemaker
 % ACS Applied Energy Materials, (2018), doi: 10.1021/acsaem.8b00457
+
+% Version: 1.3
 
 %% Settings:
 % !!! WARNING! The settings for equil_time, diffusion_dimensions, z_ion,
@@ -31,7 +32,7 @@ function analyse_md(folder, diff_elem, material)
     rdf_max_dist = 10; %Maximal distance of the RDF in Angstrom 
 
     % Movie showing the jumps:  
-    movie = false; % Make a movie showing the jumps (or not) 
+    movie = true; % Make a movie showing the jumps (or not) 
     nr_steps_frame = 5; % How many time steps per frame in the movie, increase to get smaller and quicker movies
     start_end = [5000; 7500]; % The time-steps for which to make a movie ([start at step; end at step])
        
@@ -68,7 +69,7 @@ function analyse_md(folder, diff_elem, material)
             fprintf('Reading VASP simulation data from %s, this can take a while.... \n', outcar_file)            
             sim_data = read_vasp(outcar_file, vasprun_file, equil_time, diff_elem, sim_data_file, diffusion_dimensions, z_ion);
         elseif exist(lammps_xyz, 'file')
-            fprintf('Reading LAMMPS simulation data from %s and the other files given, this can take a while.... \n', lammps_xyz)            
+            fprintf('Reading LAMMPS simulation data from %s and some other files, this can take a while.... \n', lammps_xyz)            
             sim_data = read_lammps(lammps_xyz, lammps_input, lammps_output, lammps_structure, ...
                  equil_time, diff_elem, sim_data_file, diffusion_dimensions, z_ion);
         else
@@ -77,7 +78,7 @@ function analyse_md(folder, diff_elem, material)
         end
     else % sim_data exists already:
         disp('Found simulation data file in given folder')
-        load(sim_data_file)
+        load(sim_data_file) 
     end    
     
 %% Find sites and transitions  
@@ -109,7 +110,7 @@ function analyse_md(folder, diff_elem, material)
         save(sites_file, 'sites')
     else
         load(sites_file)
-        fprintf('Found sites file: %s .\n', sites_file)
+        fprintf('Found sites file: %s \n', sites_file)
         if ~strcmp(sites.material, material)
             fprintf('ERROR! The material in sites.mat (%s) differs from the given one (%s)! \n', sites.material, material)
             fprintf('If this is not a mistake rename or remove sites.mat and try again. \n')

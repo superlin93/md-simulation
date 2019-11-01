@@ -2,7 +2,7 @@ function make_movie(sites, sim_data, start_end, movie_file, step_frame)
     % Make a movie showing how the atoms jump from site to site
     % LATTICE NOT TAKEN INTO ACCOUNT CORRECTLY YET!
     %tic
-    
+    max_t = sim_data.nr_steps;
     nr_atoms = sim_data.nr_diffusing;
     F = VideoWriter(movie_file, 'MPEG-4');
     open(F);
@@ -75,13 +75,20 @@ function make_movie(sites, sim_data, start_end, movie_file, step_frame)
             atoms.ZData(j) = sites.frac_pos(3,site_nr);
         else %Find the first position this atom occupies:
             t = start_end(1);
-            while(site_nr == 0 || site_nr > nr_stable)
+            while( (site_nr == 0 || site_nr > nr_stable) && t < max_t)
                 t = t + 1;
                 site_nr = sites.atoms(t,j);
             end
-            atoms.XData(j) = sites.frac_pos(1,site_nr);
-            atoms.YData(j) = sites.frac_pos(2,site_nr);
-            atoms.ZData(j) = sites.frac_pos(3,site_nr);
+            if site_nr == 0 % Make these atoms disappear from the movie
+                fprintf('Warning! Atom nr. %d not found at any given site, this one is ignored for the movie. \n', j)
+                atoms.XData(j) = 10.0;
+                atoms.YData(j) = 10.0;
+                atoms.ZData(j) = 10.0;               
+            else
+                atoms.XData(j) = sites.frac_pos(1,site_nr);
+                atoms.YData(j) = sites.frac_pos(2,site_nr);
+                atoms.ZData(j) = sites.frac_pos(3,site_nr);
+            end
         end
     end
     writeVideo(F,getframe(figurehandle));

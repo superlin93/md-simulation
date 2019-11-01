@@ -140,14 +140,18 @@ function sim_data = read_lammpsfiles(xyz_file, lammps_input, lammps_output, lamm
      
     % Diffusing element specific:
     counter = 1;
+    sim_data.diffusing_atom = false(sim_data.nr_atoms,1);
+    
     sim_data.nr_diffusing = 0;
     for i = 1:sim_data.nr_elements
+       % Where to find the diffusing atoms in sim_data, give the diffusing atoms the value 'true' 
         if strcmp(sim_data.elements{i}, sim_data.diff_elem)
-            sim_data.nr_diffusing = sim_data.nr_per_element(i);
-            % Where to find the diffusing atoms in sim_data.cart_pos (and others):
-            sim_data.start_diff_elem = counter; 
-            sim_data.end_diff_elem = counter + sim_data.nr_per_element(i) -1;
+            sim_data.nr_diffusing = sim_data.nr_diffusing + sim_data.nr_per_element(i);
+            for j = counter:(counter + sim_data.nr_per_element(i) - 1) 
+                sim_data.diffusing_atom(j) = true;
+            end    
         end
+        counter = counter + sim_data.nr_per_element(i);
     end
     
     % Check if the given diffusing element is present:
@@ -163,8 +167,10 @@ function sim_data = read_lammpsfiles(xyz_file, lammps_input, lammps_output, lamm
 
 %% Now read positions of all atoms during the simulation from the xyz-file:
     file = fopen(xyz_file);
-    % Define cartesian positions array
-    sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps, 'single'); %'single' gives smaller files in comparison to the normal setting of 'double' 
+
+    sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps); % Define cartesian positions array
+% For testing avoid arrays of several gigabytes:
+%    sim_data.cart_pos = zeros(3, sim_data.nr_atoms, 50);
     nr_atoms = sim_data.nr_atoms;
     
     pos_line = 'Atoms.'; %after which word the positions of the next timestep begin
@@ -200,7 +206,7 @@ function sim_data = read_lammpsfiles(xyz_file, lammps_input, lammps_output, lamm
     if step ~= sim_data.nr_steps
         sim_data.nr_steps = step;
         temp_cart = sim_data.cart_pos(:, :, 1:step);
-        sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps, 'single');
+        sim_data.cart_pos = zeros(3, sim_data.nr_atoms, sim_data.nr_steps);
         sim_data.cart_pos = temp_cart;
     end
     % Total simulated time:
